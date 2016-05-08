@@ -1,10 +1,10 @@
 import tensorflow as tf
+from scipy.io import loadmat
 import numpy as np
-import scipy.io
 
-
-def net(data_path, input_image):
-    layers = (
+class VGG19(object):
+    """ Pretrained VGG19 Network Class """
+    _layers = (
         'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
 
         'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2',
@@ -16,49 +16,51 @@ def net(data_path, input_image):
         'relu4_3', 'conv4_4', 'relu4_4', 'pool4',
 
         'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
-        'relu5_3', 'conv5_4', 'relu5_4'
-    )
+        'relu5_3', 'conv5_4', 'relu5_4')
 
-    data = scipy.io.loadmat(data_path)
-    mean = data['normalization'][0][0][0]
-    mean_pixel = np.mean(mean, axis=(0, 1))
-    weights = data['layers'][0]
+    def __init__(self, vgg_path):
+        data = loadmat(vgg_path)
+        mean = data['normalization'][0][0][0]
+        self.mean_pixel = np.mean(mean, axis=(0, 1))
+        self._weights = data['layers'][0]
 
-    net = {}
-    current = input_image
-    for i, name in enumerate(layers):
-        kind = name[:4]
-        if kind == 'conv':
-            kernels, bias = weights[i][0][0][0][0]
-            # matconvnet: weights are [width, height, in_channels, out_channels]
-            # tensorflow: weights are [height, width, in_channels, out_channels]
-            kernels = np.transpose(kernels, (1, 0, 2, 3))
-            bias = bias.reshape(-1)
-            current = _conv_layer(current, kernels, bias)
-        elif kind == 'relu':
-            current = tf.nn.relu(current)
-        elif kind == 'pool':
-            current = _pool_layer(current)
-        net[name] = current
+    def network(self, input_image):
+        """ return VGG19 network connected to input image """
+        network = {}
+        current = input_image
+        for i, layer in enumerate(self._layers):
+            kind = layer[:4]
+            if kind == 'conv':
+                kernels, bias = self._weights[i][0][0][0][0]
+                # matconvnet: weights are [width, height, in_channels, out_channels]
+                # tensorflow: weights are [height, width, in_channels, out_channels]
+                kernels = np.transpose(kernels, (1, 0, 2, 3))
+                bias = bias.reshape(-1)
+                current = self._conv2d_layer(current, kernels, bias)
+            elif kind == 'relu':
+                current = tf.nn.relu(current)
+            elif kind == 'pool':
+                current = self._max_pool_2x2_layer(current)
+            network[layer] = current
 
-    assert len(net) == len(layers)
-    return net, mean_pixel
+        assert len(network) == len(self._layers)
+        return network
 
+    def preprocess(self, input_image):
+        """ preprocess by subtracting mean pixel """
+        return input_image - self.mean_pixel
 
-def _conv_layer(input, weights, bias):
-    conv = tf.nn.conv2d(input, tf.constant(weights), strides=(1, 1, 1, 1),
-            padding='SAME')
-    return tf.nn.bias_add(conv, bias)
+    def unprocess(self, input_image):
+        """ post process by adding mean pixel """
+        return input_image + self.mean_pixel
 
+    @staticmethod
+    def _conv2d_layer(x, W, bias):
+        """ return convolutional layer """
+        conv = tf.nn.conv2d(x, tf.constant(W), strides=(1, 1, 1, 1), padding='SAME')
+        return tf.nn.bias_add(conv, bias)
 
-def _pool_layer(input):
-    return tf.nn.max_pool(input, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),
-            padding='SAME')
-
-
-def preprocess(image, mean_pixel):
-    return image - mean_pixel
-
-
-def unprocess(image, mean_pixel):
-    return image + mean_pixel
+    @staticmethod
+    def _max_pool_2x2_layer(x):
+        """ return max pooling layer """
+        return tf.nn.max_pool(x, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1), padding='SAME')
