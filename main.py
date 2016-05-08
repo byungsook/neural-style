@@ -50,24 +50,25 @@ def main():
         plt.show()
 
 
-    # reconstruct content image
-    rec_content_layer = ('conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'relu4_2', 'conv5_1')
-    for layer in rec_content_layer:
-        reconstructed_image = neural_style.reconstruct_content(
-            content_arr, VGG_PATH, layer, LEARNING_RATE, NUM_ITER)
-        imsave('output/1-rec-content-'+layer+'.jpg', reconstructed_image)
+    # # reconstruct content image
+    # rec_content_layer = ('conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'relu4_2', 'conv5_1')
+    # for layer in rec_content_layer:
+    #     reconstructed_image = neural_style.reconstruct_content(
+    #         content_arr, VGG_PATH, layer, LEARNING_RATE, NUM_ITER)
+    #     imsave('output/1-rec-content-'+layer+'.jpg', reconstructed_image)
 
     # layer = 'relu4_2'
     # reconstructed_image = neural_style.reconstruct_content(
     #     content_arr, VGG_PATH, layer, LEARNING_RATE, NUM_ITER)
     # imsave('output/1-rec-content-'+layer+'.jpg', reconstructed_image)
 
-    # # reconstruct style image
-    # rec_style_layer = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
-    # for layer in rec_style_layer:
-    #     reconstructed_image = neural_style.reconstruct_style(
-    #         style_arr, VGG_PATH, layer, LEARNING_RATE, NUM_ITER)
-    #     imsave('output/1-rec-style-'+layer+'.jpg', reconstructed_image)
+    # reconstruct style image
+    rec_style_layer = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
+    for i in range(len(rec_style_layer)):
+        reconstructed_image = neural_style.reconstruct_style(
+            style_arr, VGG_PATH, rec_style_layer[0:i+1], LEARNING_RATE, NUM_ITER)
+        imsave('output/1-rec-style-'+rec_style_layer[i]+'.jpg', reconstructed_image)
+                
 
 def imread(file_name):
     """ load image and cast type to float """
