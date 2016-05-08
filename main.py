@@ -1,8 +1,8 @@
 import os
 
 import numpy as np
-import matplotlib.pyplot as plt
 import scipy.misc
+import matplotlib.pyplot as plt
 
 import neural_style
 
@@ -10,7 +10,8 @@ CONTENT_PATH = 'examples/1-content.jpg'
 STYLE_PATH = 'examples/1-style.jpg'
 OUTPUT_PATH = 'examples/1-output2.jpg'
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
-
+LEARNING_RATE = 1e1
+NUM_ITER = 1000
 
 def main():
     current_path = os.getcwd()
@@ -48,13 +49,25 @@ def main():
         plt.imshow(style_arr)
         plt.show()
 
+
     # reconstruct content image
-    rec_content_layer = ('conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1')
+    rec_content_layer = ('conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'relu4_2', 'conv5_1')
     for layer in rec_content_layer:
         reconstructed_image = neural_style.reconstruct_content(
-            content_arr, style_arr, VGG_PATH, layer)
-        imsave('1-rec-content-'+layer+'.jpg', reconstructed_image)
+            content_arr, VGG_PATH, layer, LEARNING_RATE, NUM_ITER)
+        imsave('output/1-rec-content-'+layer+'.jpg', reconstructed_image)
 
+    # layer = 'relu4_2'
+    # reconstructed_image = neural_style.reconstruct_content(
+    #     content_arr, VGG_PATH, layer, LEARNING_RATE, NUM_ITER)
+    # imsave('output/1-rec-content-'+layer+'.jpg', reconstructed_image)
+
+    # # reconstruct style image
+    # rec_style_layer = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
+    # for layer in rec_style_layer:
+    #     reconstructed_image = neural_style.reconstruct_style(
+    #         style_arr, VGG_PATH, layer, LEARNING_RATE, NUM_ITER)
+    #     imsave('output/1-rec-style-'+layer+'.jpg', reconstructed_image)
 
 def imread(file_name):
     """ load image and cast type to float """
