@@ -6,12 +6,14 @@ import matplotlib.pyplot as plt
 
 import neural_style
 
-CONTENT_PATH = 'examples/1-content.jpg'
-STYLE_PATH = 'examples/1-style.jpg'
-OUTPUT_PATH = 'examples/1-output2.jpg'
+CONTENT_PATH = 'examples/content.jpg'
+STYLE_PATH = 'examples/style.jpg'
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
 LEARNING_RATE = 1e1
 NUM_ITER = 1000
+CONTENT_WEIGHT = 5e0
+STYLE_WEIGHT = 1e2
+TV_WEIGHT = 1e2
 
 def main():
     current_path = os.getcwd()
@@ -57,18 +59,28 @@ def main():
     #         content_arr, VGG_PATH, layer, LEARNING_RATE, NUM_ITER)
     #     imsave('output/1-rec-content-'+layer+'.jpg', reconstructed_image)
 
-    # layer = 'relu4_2'
+    # layer = 'conv5_1'
     # reconstructed_image = neural_style.reconstruct_content(
     #     content_arr, VGG_PATH, layer, LEARNING_RATE, NUM_ITER)
     # imsave('output/1-rec-content-'+layer+'.jpg', reconstructed_image)
 
-    # reconstruct style image
-    rec_style_layer = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
-    for i in range(len(rec_style_layer)):
-        reconstructed_image = neural_style.reconstruct_style(
-            style_arr, VGG_PATH, rec_style_layer[0:i+1], LEARNING_RATE, NUM_ITER)
-        imsave('output/1-rec-style-'+rec_style_layer[i]+'.jpg', reconstructed_image)
-                
+    # # reconstruct style image
+    # rec_style_layer = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
+    # for i in range(1, len(rec_style_layer)):
+    #     reconstructed_image = neural_style.reconstruct_style(
+    #         style_arr, VGG_PATH, rec_style_layer[0:i+1], LEARNING_RATE, NUM_ITER)
+    #     imsave('output/1-rec-style-'+rec_style_layer[i]+'.jpg', reconstructed_image)
+
+    # synthesize image
+    content_layer = ('relu4_2')
+    style_layers = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
+    for i, synthesized_image in neural_style.synthesize_image(
+        content_arr, style_arr, VGG_PATH,
+        content_layer, style_layers,
+        CONTENT_WEIGHT, STYLE_WEIGHT, TV_WEIGHT,
+        LEARNING_RATE, NUM_ITER):
+        imsave('output/output-%d.jpg' % i, synthesized_image)
+
 
 def imread(file_name):
     """ load image and cast type to float """
