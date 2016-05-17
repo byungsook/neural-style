@@ -3,10 +3,11 @@ import os
 import numpy as np
 import scipy.misc
 import matplotlib.pyplot as plt
+from PIL import Image
 
 import neural_style
 
-CONTENT_PATH = 'examples/content.jpg'
+CONTENT_PATH = 'examples/1-content.jpg'
 STYLE_PATH = 'examples/style.jpg'
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
 LEARNING_RATE = 1e1
@@ -66,20 +67,56 @@ def main():
 
     # # reconstruct style image
     # rec_style_layer = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
-    # for i in range(1, len(rec_style_layer)):
+    # for i in range(len(rec_style_layer)):
     #     reconstructed_image = neural_style.reconstruct_style(
     #         style_arr, VGG_PATH, rec_style_layer[0:i+1], LEARNING_RATE, NUM_ITER)
     #     imsave('output/1-rec-style-'+rec_style_layer[i]+'.jpg', reconstructed_image)
 
-    # synthesize image
-    content_layer = ('relu4_2')
-    style_layers = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
-    for i, synthesized_image in neural_style.synthesize_image(
-        content_arr, style_arr, VGG_PATH,
-        content_layer, style_layers,
-        CONTENT_WEIGHT, STYLE_WEIGHT, TV_WEIGHT,
-        LEARNING_RATE, NUM_ITER):
-        imsave('output/output-%d.jpg' % i, synthesized_image)
+    # # synthesize image
+    # content_layer = ('relu4_2')
+    # style_layers = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
+    # for i, synthesized_image in neural_style.synthesize_image(
+    #     content_arr, style_arr, VGG_PATH,
+    #     content_layer, style_layers,
+    #     CONTENT_WEIGHT, STYLE_WEIGHT, TV_WEIGHT,
+    #     LEARNING_RATE, NUM_ITER):
+    #     imsave('output/output-%d.jpg' % i, synthesized_image)
+
+    # # save filtered style image
+    # rec_style_layer = ('conv1_1', 'relu1_1', 'conv2_1', 'relu2_1', 'conv3_1', 'relu3_1',
+    #     'conv4_1', 'relu4_1', 'conv5_1', 'relu5_1')
+    # for i, filtered_style_images in neural_style.filter_style_image(
+    #     style_arr, VGG_PATH, rec_style_layer):
+    #     depth = filtered_style_images.shape[3]
+    #     for j in range(depth):
+    #         img = filtered_style_images[0,:,:,j]
+    #         imsave('output/filter/filtered-style-%s-%d.jpg' % (rec_style_layer[i], j), img)
+
+    # do SVD for filtered style image
+    rec_style_layer = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
+    combine_scale = 4
+    grid_scale = combine_scale/4.0
+    combined_image_size = (int(combine_scale*style_arr.shape[1]), int(combine_scale*style_arr.shape[0])) # w, h
+    grid_image_size = (int(grid_scale*style_arr.shape[1]), int(grid_scale*style_arr.shape[0])) # w, h
+    for i, reduced_feature_maps, var_ratio in neural_style.svd_gram_style_image(
+            style_arr, VGG_PATH, rec_style_layer):
+        depth = reduced_feature_maps.shape[2]
+        new_img = Image.new('RGB', combined_image_size)
+        root_depth = int(depth**0.5)
+        j = 0
+        for y in range(root_depth):
+            for x in range(root_depth):
+                img = Image.fromarray(reduced_feature_maps[:, :, j])
+                j = j+1
+                img = img.resize(grid_image_size, Image.ANTIALIAS)
+                new_img.paste(img, (x*grid_image_size[0], y*grid_image_size[1]))
+        new_img.save('output/grid/no-norm-grid-style-%s.jpg' % rec_style_layer[i])
+        fig = plt.figure()
+        plt.plot(var_ratio)
+        plt.ylabel('var ratio')
+        plt.xlabel('sum %g' % sum(var_ratio))
+        fig.savefig('output/grid/var-ratio-%s.jpg' % rec_style_layer[i])
+        plt.close(fig)
 
 
 def imread(file_name):

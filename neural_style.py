@@ -1,6 +1,7 @@
 import time
 import tensorflow as tf
 import numpy as np
+import sklearn.decomposition
 from vgg import VGG19
 
 try:
@@ -214,6 +215,78 @@ def synthesize_image(content_arr, style_arr, vgg_path,
                 best_loss = step_loss
                 best_image = synthesized_image.eval()
             yield (i, vgg19.unprocess(best_image.reshape(content_shape[1:])))
+
+    print 'End: %s' % time.ctime()
+    end = time.time()
+    elapsed = end - start
+    m, s = divmod(elapsed, 60)
+    h, m = divmod(m, 60)
+    print 'Elapsed Time: %d:%d:%d [hms]' % (h, m, s)
+
+
+
+def filter_style_image(style_arr, vgg_path, layers):
+    """ save filtered style image """    
+    print 'Start: %s' % time.ctime()
+    start = time.time()
+    
+    sess = tf.InteractiveSession()
+
+    # create VGG19 pretrained instance
+    vgg19 = VGG19(vgg_path)
+
+    # compute style features in feed forward mode
+    shape = (1,) + style_arr.shape # [1, h, w, c]
+    input_image = tf.placeholder(tf.float32, shape=shape)
+    style_feature_network = vgg19.network(input_image)
+    style_pre = np.array([vgg19.preprocess(style_arr)])
+
+    for i, layer in enumerate(layers):
+        style_feature_map = style_feature_network[layer].eval(feed_dict={input_image: style_pre})
+        yield (i, style_feature_map)
+
+    print 'End: %s' % time.ctime()
+    end = time.time()
+    elapsed = end - start
+    m, s = divmod(elapsed, 60)
+    h, m = divmod(m, 60)
+    print 'Elapsed Time: %d:%d:%d [hms]' % (h, m, s)
+
+
+def svd_gram_style_image(style_arr, vgg_path, layers):
+    """ save filtered style image """    
+    print 'Start: %s' % time.ctime()
+    start = time.time()
+    
+    sess = tf.InteractiveSession()
+
+    # create VGG19 pretrained instance
+    vgg19 = VGG19(vgg_path)
+
+    # compute style features in feed forward mode
+    shape = (1,) + style_arr.shape # [1, h, w, c]
+    input_image = tf.placeholder(tf.float32, shape=shape)
+    style_feature_network = vgg19.network(input_image)
+    style_pre = np.array([vgg19.preprocess(style_arr)])
+
+    for i, layer in enumerate(layers):
+        style_feature_map = style_feature_network[layer].eval(feed_dict={input_image: style_pre})
+        style_feature_map_size = style_feature_map.shape
+        style_feature_map = np.reshape(style_feature_map, (-1, style_feature_map.shape[3]))
+        # svd
+        # U, s, V = np.linalg.svd(style_feature_map, full_matrices=False)
+        rank = 16
+        tsvd = sklearn.decomposition.TruncatedSVD(rank, algorithm="randomized", n_iter=1)
+        x_truncated = tsvd.fit_transform(style_feature_map)
+        sorted_id = np.argsort(tsvd.explained_variance_ratio_)[::-1]
+        x_truncated = x_truncated[:, sorted_id]
+        sorted_var_ratio = tsvd.explained_variance_ratio_[sorted_id]
+        print sorted_var_ratio, sum(sorted_var_ratio)
+        # x_norm = (x_truncated - x_truncated.min(0)) / x_truncated.ptp(0) * 255.0
+        x_norm = x_truncated # without normalization
+        yield (i, x_norm.reshape(
+            style_feature_map_size[1], style_feature_map_size[2], rank),
+            sorted_var_ratio)
 
     print 'End: %s' % time.ctime()
     end = time.time()
